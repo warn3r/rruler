@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RRule Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        #rrule {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+        }
+
+        #rrule-freq, .yearly, .monthly, .weekly, .daily, #rrule-end {
+            margin-bottom: 15px;
+        }
+
+        .days p {
+            margin: 5px 0;
+        }
+
+        select, input[type="number"], input[type="date"] {
+            padding: 5px;
+            margin: 5px;
+        }
+
+        #rrule-result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            word-break: break-all;
+            font-family: monospace;
+        }
+
+        .monthly-on, .monthly-onthe, .yearly-on, .yearly-onthe {
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .frequency {
+            font-size: 16px;
+            padding: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>RRule Generator</h1>
+    <div id="rrule-container"></div>
+
+    <script>
+    class RRuleGenerator {
+        constructor(containerId) {
+            this.container = document.getElementById(containerId);
+            this.initializeHTML();
+            this.setupEventListeners();
+        }
+
+        initializeHTML() {
+            this.container.innerHTML = `
+                <div id="rrule">
+                    <div id="rrule-freq">
+                        <select class="frequency">
+                            <option value="YEARLY">Yearly</option>
+                            <option value="MONTHLY">Monthly</option>
+                            <option value="WEEKLY">Weekly</option>
+                            <option value="DAILY">Daily</option>
+                        </select>
+                    </div>
+
+                    <div class="yearly">
+                        <select class="type">
+                            <option value="on">By Date in Month</option>
+                            <option value="onthe">By nth Day in Month</option>
+                        </select>
+                        <span class="yearly-on">
+                            <select class="month">
+                                ${this.generateMonthOptions()}
+                            </select>
+                            <select class="monthday">
+                                ${this.generateMonthDayOptions()}
+                            </select>
+                        </span>
+                        <span class="yearly-onthe" style="display: none;">
+                            <select class="nth">
+                                <option value="1">1st</option>
+                                <option value="2">2nd</option>
+                                <option value="3">3rd</option>
+                                <option value="4">4th</option>
+                                <option value="-1">Last</option>
+                            </select>
+                            <select class="day">
+                                ${this.generateDayOptions()}
+                            </select>
+                            <span> of </span>
+                            <select class="month">
+                                ${this.generateMonthOptions()}
+                            </select>
+                        </span>
+                    </div>
+
+                    <div class="monthly" style="display: none;">
+                        <p>Every <input type="number" class="interval" value="1" min="1"/> month(s)</p>
+                        <select class="type">
+                            <option value="on">By Date in Month</option>
+                            <option value="onthe">By nth Day in Month</option>
+                        </select>
+                        <span class="monthly-on">
+                            <select class="monthday">
+                                ${this.generateMonthDayOptions()}
+                            </select>
+                        </span>
+                        <span class="monthly-onthe" style="display: none;">
+                            <select class="nth">
+                                <option value="1">1st</option>
+                                <option value="2">2nd</option>
+                                <option value="3">3rd</option>
+                                <option value="4">4th</option>
+                                <option value="-1">Last</option>
+                            </select>
+                            <select class="day">
+                                ${this.generateDayOptions()}
+                            </select>
+                        </span>
+                    </div>
+
+                    <div class="weekly" style="display: none;">
+                        <p>Every <input type="number" class="interval" value="1" min="1"/> week(s)</p>
+                        <div class="days">
+                            ${this.generateWeekDayCheckboxes()}
+                        </div>
+                    </div>
+
+                    <div class="daily" style="display: none;">
+                        <p>Every <input type="number" class="interval" value="1" min="1"/> day(s)</p>
+                    </div>
+
+                    <div id="rrule-end">
+                        <select class="ends">
+                            <option value="never">Never Ends</option>
+                            <option value="count">Ends After</option>
+                            <option value="until">Ends on Date</option>
+                        </select>
+                        <span class="count" style="display: none;">
+                            <input type="number" class="interval" value="1" min="1"/> occurrence(s)
+                        </span>
+                        <span class="until" style="display: none;">
+                            <input type="date" class="date"/>
+                        </span>
+                    </div>
+                </div>
+                <div id="rrule-result"></div>
+            `;
+        }
+
+        generateMonthOptions() {
+            const months = [
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'
+            ];
+            return months.map((month, index) => 
+                `<option value="${index + 1}">${month}</option>`
+            ).join('');
+        }
+
+        generateMonthDayOptions() {
+            return Array.from({length: 31}, (_, i) => 
+                `<option value="${i + 1}">${i + 1}</option>`
+            ).join('');
+        }
+
+        generateDayOptions() {
+            const days = [
+                {value: 'SU', label: 'Sunday'},
+                {value: 'MO', label: 'Monday'},
+                {value: 'TU', label: 'Tuesday'},
+                {value: 'WE', label: 'Wednesday'},
+                {value: 'TH', label: 'Thursday'},
+                {value: 'FR', label: 'Friday'},
+                {value: 'SA', label: 'Saturday'}
+            ];
+            return days.map(day => 
+                `<option value="${day.value}">${day.label}</option>`
+            ).join('');
+        }
+
+        generateWeekDayCheckboxes() {
+            const days = [
+                {value: 'SU', label: 'Sunday'},
+                {value: 'MO', label: 'Monday'},
+                {value: 'TU', label: 'Tuesday'},
+                {value: 'WE', label: 'Wednesday'},
+                {value: 'TH', label: 'Thursday'},
+                {value: 'FR', label: 'Friday'},
+                {value: 'SA', label: 'Saturday'}
+            ];
+            return days.map(day => 
+                `<p><label>${day.label}</label> <input type="checkbox" value="${day.value}"/></p>`
+            ).join('');
+        }
+
+        setupEventListeners() {
+            // Frequency change handler
+            this.container.querySelector('.frequency').addEventListener('change', (e) => {
+                this.showFrequencyOptions(e.target.value);
+                this.generateRRule();
+            });
+
+            // Type change handlers for yearly and monthly
+            this.container.querySelectorAll('.type').forEach(select => {
+                select.addEventListener('change', (e) => {
+                    const parent = e.target.closest('.yearly, .monthly');
+                    const type = e.target.value;
+                    parent.querySelector(`.${parent.classList[0]}-on`).style.display = 
+                        type === 'on' ? 'inline' : 'none';
+                    parent.querySelector(`.${parent.classList[0]}-onthe`).style.display = 
+                        type === 'onthe' ? 'inline' : 'none';
+                    this.generateRRule();
+                });
+            });
+
+            // End type change handler
+            this.container.querySelector('.ends').addEventListener('change', (e) => {
+                const value = e.target.value;
+                this.container.querySelector('.count').style.display = 
+                    value === 'count' ? 'inline' : 'none';
+                this.container.querySelector('.until').style.display = 
+                    value === 'until' ? 'inline' : 'none';
+                this.generateRRule();
+            });
+
+            // Add change listeners to all inputs and selects
+            this.container.querySelectorAll('input, select').forEach(element => {
+                element.addEventListener('change', () => this.generateRRule());
+            });
+        }
+
+        showFrequencyOptions(frequency) {
+            this.container.querySelectorAll('.yearly, .monthly, .weekly, .daily').forEach(div => {
+                div.style.display = 'none';
+            });
+            
+            const selectedDiv = this.container.querySelector(`.${frequency.toLowerCase()}`);
+            if (selectedDiv) {
+                selectedDiv.style.display = 'block';
+            }
+        }
+
+        generateRRule() {
+            const frequency = this.container.querySelector('.frequency').value;
+            let rule = `FREQ=${frequency}`;
+
+            if (frequency !== 'YEARLY') {
+                const interval = this.container.querySelector(`.${frequency.toLowerCase()} .interval`).value;
+                if (interval > 1) {
+                    rule += `;INTERVAL=${interval}`;
+                }
+            }
+
+            switch (frequency) {
+                case 'YEARLY':
+                    rule += this.getYearlyRulesPart();
+                    break;
+                case 'MONTHLY':
+                    rule += this.getMonthlyRulesPart();
+                    break;
+                case 'WEEKLY':
+                    rule += this.getWeeklyRulesPart();
+                    break;
+            }
+
+            rule += this.getEndRulesPart();
+            this.container.querySelector('#rrule-result').textContent = rule;
+        }
+
+        getYearlyRulesPart() {
+            const yearlyType = this.container.querySelector('.yearly .type').value;
+            if (yearlyType === 'on') {
+                const month = this.container.querySelector('.yearly-on .month').value;
+                const day = this.container.querySelector('.yearly-on .monthday').value;
+                return `;BYMONTH=${month};BYMONTHDAY=${day}`;
+            } else {
+                const nth = this.container.querySelector('.yearly-onthe .nth').value;
+                const day = this.container.querySelector('.yearly-onthe .day').value;
+                const month = this.container.querySelector('.yearly-onthe .month').value;
+                return `;BYDAY=${nth}${day};BYMONTH=${month}`;
+            }
+        }
+
+        getMonthlyRulesPart() {
+            const monthlyType = this.container.querySelector('.monthly .type').value;
+            if (monthlyType === 'on') {
+                const day = this.container.querySelector('.monthly-on .monthday').value;
+                return `;BYMONTHDAY=${day}`;
+            } else {
+                const nth = this.container.querySelector('.monthly-onthe .nth').value;
+                const day = this.container.querySelector('.monthly-onthe .day').value;
+                return `;BYDAY=${nth}${day}`;
+            }
+        }
+
+        getWeeklyRulesPart() {
+            const selectedDays = Array.from(this.container.querySelectorAll('.weekly .days input:checked'))
+                .map(input => input.value);
+            return selectedDays.length ? `;BYDAY=${selectedDays.join(',')}` : '';
+        }
+
+        getEndRulesPart() {
+            const endType = this.container.querySelector('.ends').value;
+            switch (endType) {
+                case 'count':
+                    const count = this.container.querySelector('.count .interval').value;
+                    return `;COUNT=${count}`;
+                case 'until':
+                    const until = this.container.querySelector('.until .date').value;
+                    return until ? `;UNTIL=${until.replace(/-/g, '')}` : '';
+                default:
+                    return '';
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const rruleGenerator = new RRuleGenerator('rrule-container');
+    });
+    </script>
+</body>
+</html>
